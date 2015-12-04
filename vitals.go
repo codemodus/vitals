@@ -46,11 +46,10 @@ func LogMemStats(cycle time.Duration, logger *log.Logger) {
 		for {
 			runtime.ReadMemStats(&memStats)
 			logger.Printf(
-				"%d, %d, %d, %d\n",
-				memStats.HeapSys,
-				memStats.HeapAlloc,
-				memStats.HeapIdle,
-				memStats.HeapReleased,
+				"CurAlloc(kB): %d, FromSys(kB): %d, CurMalloc: %d\n",
+				memStats.Alloc/1000,
+				memStats.Sys/1000,
+				(memStats.Mallocs - memStats.Frees),
 			)
 			time.Sleep(cycle)
 		}
