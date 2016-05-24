@@ -4,8 +4,10 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 	"time"
 )
 
@@ -73,4 +75,38 @@ func WriteHeapProfile(file string) error {
 		return err
 	}
 	return nil
+}
+
+func SetupPIDFile() (deferFunc func(), err error) {
+	pid := strconv.Itoa(os.Getpid())
+	sn := path.Base(os.Args[0])
+	dn := path.Join("/tmp", "."+sn+"-pid")
+	fx := path.Join(dn, sn+".pid")
+
+	if err = os.Mkdir(dn, 0700); os.IsNotExist(err) {
+		return nil, err
+	}
+
+	f, err := os.Create(fx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = f.Truncate(0); err != nil {
+		return nil, err
+	}
+
+	if _, err = f.WriteString(pid); err != nil {
+		return nil, err
+	}
+
+	if err = f.Close(); err != nil {
+		return nil, err
+	}
+
+	fn := func() {
+		_ = os.RemoveAll(dn)
+	}
+
+	return fn, nil
 }
