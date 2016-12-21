@@ -1,18 +1,13 @@
 package vitals
 
 import (
-	"io/ioutil"
-	"log"
+	"fmt"
 	"os"
 	"path"
 	"runtime"
 	"runtime/pprof"
 	"strconv"
 	"time"
-)
-
-var (
-	nullLog = log.New(ioutil.Discard, "", 0)
 )
 
 func StartCPUProfile(file string) (deferFunc func(), err error) {
@@ -34,28 +29,58 @@ func StartCPUProfile(file string) (deferFunc func(), err error) {
 	return fn, nil
 }
 
-func LogMemStats(cycle time.Duration, logger *log.Logger) {
+type MemStats struct {
+	Allocs      uint64
+	TotalAllocs uint64
+	Sys         uint64
+	Mallocs     uint64
+	Frees       uint64
+}
+
+func NewMemStats(s *runtime.MemStats) *MemStats {
+	return &MemStats{
+		Allocs:      s.Alloc,
+		TotalAllocs: s.TotalAlloc,
+		Sys:         s.Sys,
+		Mallocs:     s.Mallocs,
+		Frees:       s.Frees,
+	}
+}
+
+func (s *MemStats) String() string {
+	return fmt.Sprintf(
+		"CurAlloc(kB): %d, FromSys(kB): %d, CurMalloc: %d\n",
+		s.Allocs/1000,
+		s.Sys/1000,
+		(s.Mallocs - s.Frees),
+	)
+}
+
+func MemoryStats() *MemStats {
+	ms := &runtime.MemStats{}
+	runtime.ReadMemStats(ms)
+
+	return NewMemStats(ms)
+}
+
+func MonitorMemoryStats(cycle time.Duration) chan *MemStats {
 	if cycle == 0 {
-		return
+		return nil
 	}
 
-	if logger == nil {
-		logger = nullLog
-	}
+	c := make(chan *MemStats)
 
 	go func() {
-		memStats := runtime.MemStats{}
+		memStats := &runtime.MemStats{}
 		for {
-			runtime.ReadMemStats(&memStats)
-			logger.Printf(
-				"CurAlloc(kB): %d, FromSys(kB): %d, CurMalloc: %d\n",
-				memStats.Alloc/1000,
-				memStats.Sys/1000,
-				(memStats.Mallocs - memStats.Frees),
-			)
+			runtime.ReadMemStats(memStats)
+			c <- NewMemStats(memStats)
+
 			time.Sleep(cycle)
 		}
 	}()
+
+	return c
 }
 
 func WriteHeapProfile(file string) error {
