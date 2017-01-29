@@ -49,7 +49,7 @@ func NewMemStats(s *runtime.MemStats) *MemStats {
 
 func (s *MemStats) String() string {
 	return fmt.Sprintf(
-		"CurAlloc(kB): %d, FromSys(kB): %d, CurMalloc: %d\n",
+		"CurAlloc(kB): %d, FromSys(kB): %d, CurMalloc: %d",
 		s.Allocs/1000,
 		s.Sys/1000,
 		(s.Mallocs - s.Frees),
